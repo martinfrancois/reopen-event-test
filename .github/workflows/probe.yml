@@ -1,0 +1,27 @@
+name: probe
+on:
+  pull_request_target:
+    types: [opened, edited, closed, reopened]
+permissions:
+  pull-requests: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report the event
+        env:
+          ACTION: ${{ github.event.action }}
+          STATE: ${{ github.event.pull_request.state }}
+        run: echo "action=$ACTION state=$STATE"
+      - name: Close a newly opened pull request, like the disclosure workflow
+        if: github.event.action == 'opened'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr close "$PR" --repo "$GITHUB_REPOSITORY"
+      - name: Reopen a closed pull request whose box is ticked
+        if: github.event.action == 'edited' && github.event.pull_request.state == 'closed' && contains(github.event.pull_request.body, '- [x] box')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr reopen "$PR" --repo "$GITHUB_REPOSITORY"
